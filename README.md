@@ -19,47 +19,84 @@ sudo apt install libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0
 
 ## Usage
 
+### Interactive mode
+
+Run without arguments to launch the interactive menu:
+
 ```bash
-# Basic
-python convert.py manual.hdx
+python hdxtopdf.py
+```
+
+```
+╭──────────────────────────╮
+│ hdx2pdf                  │
+│ Huawei .hdx → PDF        │
+╰──────────────────────────╯
+? Select an action:
+  ❯ Convert file
+    Batch convert folder
+    Exit
+```
+
+### CLI mode
+
+```bash
+# Convert a single file
+python hdxtopdf.py convert manual.hdx
 
 # Specify output file
-python convert.py manual.hdx -o documentation.pdf
+python hdxtopdf.py convert manual.hdx -o documentation.pdf
 
 # Save to a directory
-python convert.py manual.hdx -o ./output/
+python hdxtopdf.py convert manual.hdx -o ./output/
 
 # Verbose (shows processing details)
-python convert.py manual.hdx -v
+python hdxtopdf.py convert manual.hdx -v
 
 # Without table of contents
-python convert.py manual.hdx --no-toc
+python hdxtopdf.py convert manual.hdx --no-toc
 
 # Batch: convert an entire folder
-python convert.py ./hdx_manuals/ -o ./pdfs/
+python hdxtopdf.py batch ./hdx_manuals/ -o ./pdfs/
 ```
 
 ## How it works
 
 ```
-file.hdx
-    │
-    ▼
-HDXExtractor
-  ├─ ZIP  → extracts internal HTML files
-  ├─ HTML → parses directly
-  └─ Text → splits on numbered headings
-    │
-    ▼
-HDXDocument (title + sections)
-    │
-    ▼
-PDFRenderer
-  ├─ WeasyPrint (primary): HTML+CSS → PDF with Huawei styling
-  └─ reportlab  (fallback): no GTK dependencies required
-    │
-    ▼
-  output.pdf
+                    ┌─────────────────────────────────┐
+                    │           hdxtopdf.py            │
+                    │                                  │
+                    │  interactive mode  │  CLI mode   │
+                    │  (InquirerPy menu) │  (argparse) │
+                    └────────────┬───────┴─────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │    commands/            │
+                    │    convert_cmd.py       │
+                    │  run_convert / run_batch│
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │    commands/functions/  │
+                    │                         │
+                    │  HDXExtractor           │
+                    │  ├─ ZIP  → HTML files   │
+                    │  ├─ HTML → direct parse │
+                    │  └─ Text → headings     │
+                    │          │              │
+                    │          ▼              │
+                    │  HDXDocument            │
+                    │  (title + sections)     │
+                    │          │              │
+                    │          ▼              │
+                    │  PDFRenderer            │
+                    │  ├─ WeasyPrint (primary)│
+                    │  └─ reportlab (fallback)│
+                    └────────────┬────────────┘
+                                 │
+                                 ▼
+                             output.pdf
 ```
 
 ## Large documents
@@ -80,9 +117,18 @@ Log order is non-sequential (parallel rendering), but the final PDF always prese
 
 ```
 hdx2pdf/
-├── convert.py       # CLI: argument parsing, batch mode, orchestration
-├── extractor.py     # Reads .hdx → HDXDocument with sections
-├── renderer.py      # HDXDocument → PDF (WeasyPrint + pikepdf)
+├── hdxtopdf.py              # Entry point: CLI + interactive mode
+├── commands/
+│   ├── convert_cmd.py       # Command logic → ConvertResult / BatchResult
+│   └── functions/
+│       ├── extractor.py     # Reads .hdx → HDXDocument with sections
+│       └── renderer.py      # HDXDocument → PDF (WeasyPrint + pikepdf)
+├── prompts/
+│   └── interactive.py       # InquirerPy interactive menu flows
+├── ui/
+│   └── output.py            # Rich-based output (print_success, spinner, etc.)
+├── exceptions/
+│   └── __init__.py          # CLISoftError, CommandError, PromptAbortedError
 └── requirements.txt
 ```
 
