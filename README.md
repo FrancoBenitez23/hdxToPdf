@@ -2,31 +2,25 @@
 
 Convierte archivos `.hdx` de documentación Huawei a PDF.
 
-## Instalación rápida
+> **Estado:** prototipo v1 funcional. Probado con archivos de hasta 171 MB y 17.000+ secciones.
+
+## Instalación
 
 ```bash
-# 1. Clonar / descomprimir el proyecto
-cd hdx2pdf
-
-# 2. (Recomendado) Crear virtualenv
-python3 -m venv venv
-source venv/bin/activate          # Linux/macOS
-venv\Scripts\activate             # Windows
-
-# 3. Instalar dependencias
+python3 -m venv env
+source env/bin/activate
 pip install -r requirements.txt
+```
 
-# 4. En Linux, WeasyPrint necesita libs del sistema:
+En Linux, WeasyPrint requiere libs del sistema:
+```bash
 sudo apt install libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev
-
-# En Windows: WeasyPrint tiene instalador GTK, ver:
-# https://doc.courtbouillon.org/weasyprint/stable/first_steps.html
 ```
 
 ## Uso
 
 ```bash
-# Archivo único → PDF en el mismo directorio
+# Básico
 python convert.py manual.hdx
 
 # Especificar salida
@@ -35,7 +29,7 @@ python convert.py manual.hdx -o documentacion.pdf
 # Guardar en carpeta
 python convert.py manual.hdx -o ./output/
 
-# Modo verbose (ver qué hace)
+# Verbose (muestra detalle del proceso)
 python convert.py manual.hdx -v
 
 # Sin tabla de contenidos
@@ -45,19 +39,6 @@ python convert.py manual.hdx --no-toc
 python convert.py ./manuales_hdx/ -o ./pdfs/
 ```
 
-## Estructura del proyecto
-
-```
-hdx2pdf/
-├── convert.py          # CLI principal
-├── requirements.txt
-├── src/
-│   ├── extractor.py    # Lee y parsea el .hdx → HDXDocument
-│   └── renderer.py     # HDXDocument → PDF (WeasyPrint o reportlab)
-├── output/             # PDFs generados
-└── samples/            # Archivos .hdx de prueba
-```
-
 ## Cómo funciona
 
 ```
@@ -65,62 +46,51 @@ archivo.hdx
     │
     ▼
 HDXExtractor
-  ├─ Si es ZIP  → extrae HTMLs internos
-  ├─ Si es HTML → parsea directo
-  └─ Fallback   → procesa como texto
+  ├─ ZIP  → extrae HTMLs internos
+  ├─ HTML → parsea directo
+  └─ Texto → divide por encabezados numerados
     │
     ▼
 HDXDocument (título + secciones)
     │
     ▼
 PDFRenderer
-  ├─ WeasyPrint (preferido): HTML+CSS → PDF fiel
-  └─ reportlab  (fallback):  API Python → PDF
+  ├─ WeasyPrint (principal): HTML+CSS → PDF con estilo Huawei
+  └─ reportlab  (fallback):  sin dependencias GTK
     │
     ▼
   salida.pdf
 ```
 
-## Logs de procesamiento
+## Documentos grandes
 
-La herramienta ahora muestra progreso en tiempo real durante la conversión.
+Para archivos con más de 200 secciones, el renderer divide el documento en chunks de 200 secciones y los renderiza en paralelo (6 workers), luego los une con pikepdf. Esto permite convertir documentos de miles de secciones sin colgar.
 
-**Salida estándar** (siempre visible):
 ```
-[hdx2pdf] Processing: manual.hdx
-[hdx2pdf] Step 1/2: Extracting content ...
-  [extract] File size: 2.3 MB | Format detected: ZIP/HelpNDoc
-  [extract] ZIP: 38 files total, 12 HTML files found
-  [extract] manual.html → 8 section(s)
-  [render] Sections to render: 42 | Engine: WeasyPrint
-  [render] TOC: 42 entries
-  [render] Estimated pages: 87
-[hdx2pdf] Extraction done: 42 section(s) found  (0.41s)
-[hdx2pdf] Step 2/2: Rendering PDF ...
-[hdx2pdf] Done: manual.pdf  (1842.3 KB, 3.45s total)
+[render] Large document (17462 sections) — splitting into 88 chunk(s)
+[render] Rendering 88 chunk(s) in parallel (max_workers=6) ...
+[render]   Chunk 3/88 done ...
+[render]   Chunk 1/88 done ...
+[render] Merging 88 chunk PDF(s) -> output.pdf ...
 ```
 
-**Con `-v` se agrega detalle fino:**
-```
-  [extract:v] ZIP manifest: ['index.html', 'chapter1.html', ...]
-  [extract:v] Heading found (h2): "1.1 Overview"
-  [render:v] HTML length: 148320 chars
-  [render:v] TOC breakdown: h1=5, h2=28, h3=9
-```
+El orden de los logs no es secuencial (es paralelo), pero el PDF final siempre respeta el orden correcto.
 
-Los prefijos `[extract]` y `[render]` indican el módulo que genera el log.
+## Estructura
+
+```
+hdx2pdf/
+├── convert.py       # CLI: argumentos, modo batch, orquestación
+├── extractor.py     # Lee el .hdx → HDXDocument con secciones
+├── renderer.py      # HDXDocument → PDF (WeasyPrint + pikepdf)
+└── requirements.txt
+```
 
 ## Troubleshooting
 
-**"No module named weasyprint"**
-→ `pip install weasyprint` o usá el fallback con reportlab (se activa automáticamente)
-
-**El PDF sale vacío**
-→ Corré con `-v` para ver qué secciones detectó el extractor.
-→ El formato interno de tu `.hdx` puede ser binario/propietario — abrilo con un
-  editor hex o `file archivo.hdx` para verificar el formato real.
+**PDF vacío**
+→ Corré con `-v` para ver cuántas secciones detectó el extractor.
 
 **Caracteres raros / encoding**
-→ El extractor usa `errors="replace"` por defecto. Si el documento es GB2312
-  (común en docs Huawei chinos), editá `extractor.py` línea del decode:
-  `raw.decode("gb2312", errors="replace")`
+→ Para documentos Huawei en chino (GB2312), cambiá en `extractor.py`:
+`raw.decode("gb2312", errors="replace")`
