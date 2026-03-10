@@ -1,0 +1,15 @@
+# hdx2pdf - dependencias
+# Instalar con: pip install -r requirements.txt
+
+# Parser HTML (requerido)
+beautifulsoup4>=4.12
+
+# Motor PDF principal (alta fidelidad, HTML→PDF)
+# Requiere: libcairo, libpango (ver README para instalación en Linux/Windows)
+weasyprint>=60.0
+
+# Motor PDF fallback (sin dependencias del sistema)
+reportlab>=4.0
+
+# Opcional: para extraer texto de HDX binarios/propietarios
+# chardet>=5.0
