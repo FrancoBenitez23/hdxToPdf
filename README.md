@@ -1,10 +1,10 @@
 # hdx2pdf
 
-Convierte archivos `.hdx` de documentación Huawei a PDF.
+Converts Huawei `.hdx` documentation files to PDF.
 
-> **Estado:** prototipo v1 funcional. Probado con archivos de hasta 171 MB y 17.000+ secciones.
+> **Status:** functional v1 prototype. Tested with files up to 171 MB and 17,000+ sections.
 
-## Instalación
+## Installation
 
 ```bash
 python3 -m venv env
@@ -12,59 +12,59 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-En Linux, WeasyPrint requiere libs del sistema:
+On Linux, WeasyPrint requires system libraries:
 ```bash
 sudo apt install libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev
 ```
 
-## Uso
+## Usage
 
 ```bash
-# Básico
+# Basic
 python convert.py manual.hdx
 
-# Especificar salida
-python convert.py manual.hdx -o documentacion.pdf
+# Specify output file
+python convert.py manual.hdx -o documentation.pdf
 
-# Guardar en carpeta
+# Save to a directory
 python convert.py manual.hdx -o ./output/
 
-# Verbose (muestra detalle del proceso)
+# Verbose (shows processing details)
 python convert.py manual.hdx -v
 
-# Sin tabla de contenidos
+# Without table of contents
 python convert.py manual.hdx --no-toc
 
-# Batch: convertir toda una carpeta
-python convert.py ./manuales_hdx/ -o ./pdfs/
+# Batch: convert an entire folder
+python convert.py ./hdx_manuals/ -o ./pdfs/
 ```
 
-## Cómo funciona
+## How it works
 
 ```
-archivo.hdx
+file.hdx
     │
     ▼
 HDXExtractor
-  ├─ ZIP  → extrae HTMLs internos
-  ├─ HTML → parsea directo
-  └─ Texto → divide por encabezados numerados
+  ├─ ZIP  → extracts internal HTML files
+  ├─ HTML → parses directly
+  └─ Text → splits on numbered headings
     │
     ▼
-HDXDocument (título + secciones)
+HDXDocument (title + sections)
     │
     ▼
 PDFRenderer
-  ├─ WeasyPrint (principal): HTML+CSS → PDF con estilo Huawei
-  └─ reportlab  (fallback):  sin dependencias GTK
+  ├─ WeasyPrint (primary): HTML+CSS → PDF with Huawei styling
+  └─ reportlab  (fallback): no GTK dependencies required
     │
     ▼
-  salida.pdf
+  output.pdf
 ```
 
-## Documentos grandes
+## Large documents
 
-Para archivos con más de 200 secciones, el renderer divide el documento en chunks de 200 secciones y los renderiza en paralelo (6 workers), luego los une con pikepdf. Esto permite convertir documentos de miles de secciones sin colgar.
+For files with more than 200 sections, the renderer splits the document into 200-section chunks and renders them in parallel (6 workers), then merges them with pikepdf. This allows converting documents with thousands of sections without hanging.
 
 ```
 [render] Large document (17462 sections) — splitting into 88 chunk(s)
@@ -74,23 +74,23 @@ Para archivos con más de 200 secciones, el renderer divide el documento en chun
 [render] Merging 88 chunk PDF(s) -> output.pdf ...
 ```
 
-El orden de los logs no es secuencial (es paralelo), pero el PDF final siempre respeta el orden correcto.
+Log order is non-sequential (parallel rendering), but the final PDF always preserves the correct order.
 
-## Estructura
+## Project structure
 
 ```
 hdx2pdf/
-├── convert.py       # CLI: argumentos, modo batch, orquestación
-├── extractor.py     # Lee el .hdx → HDXDocument con secciones
+├── convert.py       # CLI: argument parsing, batch mode, orchestration
+├── extractor.py     # Reads .hdx → HDXDocument with sections
 ├── renderer.py      # HDXDocument → PDF (WeasyPrint + pikepdf)
 └── requirements.txt
 ```
 
 ## Troubleshooting
 
-**PDF vacío**
-→ Corré con `-v` para ver cuántas secciones detectó el extractor.
+**Empty PDF**
+→ Run with `-v` to see how many sections the extractor detected.
 
-**Caracteres raros / encoding**
-→ Para documentos Huawei en chino (GB2312), cambiá en `extractor.py`:
+**Garbled characters / encoding issues**
+→ For Huawei documents in Chinese (GB2312), change in `extractor.py`:
 `raw.decode("gb2312", errors="replace")`
