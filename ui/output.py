@@ -8,6 +8,10 @@ from rich.table import Table
 console = Console()
 
 
+def clear_screen() -> None:
+    console.clear()
+
+
 def print_error(msg: str) -> None:
     console.print(f"[red]✖[/red] {msg}")
 

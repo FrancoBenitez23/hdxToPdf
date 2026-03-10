@@ -4,6 +4,7 @@ from InquirerPy.base.control import Choice
 from commands.convert_cmd import run_batch, run_convert
 from exceptions import PromptAbortedError
 from ui.output import (
+    clear_screen,
     print_error,
     print_info,
     print_success,
@@ -69,6 +70,8 @@ def _flow_convert() -> None:
         ).execute()
 
         if action == "back":
+            clear_screen()
+            print_welcome("hdx2pdf", "Huawei .hdx → PDF converter")
             return
 
         print_info(f"Converting {input_path} ...")
@@ -120,6 +123,7 @@ def _flow_batch() -> None:
         ).execute()
 
         if action == "back":
+            clear_screen()
             return
 
         print_info(f"Batch converting: {input_dir} ...")
