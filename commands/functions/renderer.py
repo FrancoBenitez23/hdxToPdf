@@ -10,7 +10,7 @@ import re
 import tempfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from extractor import HDXDocument, Section
+from commands.functions.extractor import HDXDocument, Section
 
 
 # ──────────────────────────────────────────────

@@ -14,5 +14,9 @@ reportlab>=4.0
 # PDF merging — used to stitch per-chunk WeasyPrint PDFs for large documents
 pikepdf>=8.0
 
+# CLI interface
+rich>=13.0
+InquirerPy>=0.3.4
+
 # Opcional: para extraer texto de HDX binarios/propietarios
 # chardet>=5.0
