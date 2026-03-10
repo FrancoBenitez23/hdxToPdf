@@ -35,6 +35,8 @@ def start_interactive() -> None:
 
         except PromptAbortedError:
             break
+        # InquirerPy can raise KeyboardInterrupt directly from the main menu
+        # prompt before any sub-flow has had a chance to wrap it as PromptAbortedError.
         except KeyboardInterrupt:
             break
 
@@ -53,6 +55,21 @@ def _flow_convert() -> None:
 
         toc = inquirer.confirm(message="Include table of contents?", default=True).execute()
         verbose = inquirer.confirm(message="Verbose output?", default=False).execute()
+
+        print_info(f"  File   : {input_path}")
+        print_info(f"  Output : {output or 'auto'}")
+        print_info(f"  TOC    : {'yes' if toc else 'no'}  |  Verbose: {'yes' if verbose else 'no'}")
+
+        action = inquirer.select(
+            message="Ready to convert:",
+            choices=[
+                Choice(value="convert", name="Convert"),
+                Choice(value="back", name="Cancel"),
+            ],
+        ).execute()
+
+        if action == "back":
+            return
 
         print_info(f"Converting {input_path} ...")
 
@@ -88,10 +105,30 @@ def _flow_batch() -> None:
         ).execute() or None
 
         toc = inquirer.confirm(message="Include table of contents?", default=True).execute()
+        verbose = inquirer.confirm(message="Verbose output?", default=False).execute()
+
+        print_info(f"  Folder : {input_dir}")
+        print_info(f"  Output : {output or 'auto'}")
+        print_info(f"  TOC    : {'yes' if toc else 'no'}  |  Verbose: {'yes' if verbose else 'no'}")
+
+        action = inquirer.select(
+            message="Ready to convert:",
+            choices=[
+                Choice(value="convert", name="Convert"),
+                Choice(value="back", name="Cancel"),
+            ],
+        ).execute()
+
+        if action == "back":
+            return
 
         print_info(f"Batch converting: {input_dir} ...")
-        with spinner("Converting files..."):
-            result = run_batch(input_dir, output, toc=toc)
+
+        if verbose:
+            result = run_batch(input_dir, output, verbose=verbose, toc=toc)
+        else:
+            with spinner("Converting files..."):
+                result = run_batch(input_dir, output, verbose=verbose, toc=toc)
 
         if result.error:
             print_error(result.error)

@@ -42,11 +42,16 @@ def print_table(title: str, columns: list[str], rows: list[dict]) -> None:
 
 @contextmanager
 def spinner(label: str):
-    with Progress(
+    progress = Progress(
         SpinnerColumn(),
         TextColumn("{task.description}"),
         console=console,
         transient=True,
-    ) as progress:
+    )
+    progress.start()
+    try:
         progress.add_task(label)
         yield
+    finally:
+        progress.stop()
+        console.show_cursor(True)
