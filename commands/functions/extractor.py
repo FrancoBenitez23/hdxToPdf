@@ -2,15 +2,14 @@
 extractor.py - Lee y parsea archivos .hdx de documentación Huawei
 
 Los .hdx de HelpNDoc son archivos compuestos. Estrategia de extracción:
-  1. Intentar como ZIP (HelpNDoc moderno empaqueta HTML dentro)
-  2. Intentar como HTML directo
-  3. Fallback: leer como texto plano
+  1. Intentar como HTML directo
+  2. Fallback: leer como texto plano
 
 La clase HDXExtractor devuelve un objeto HDXDocument con secciones listas
 para renderizar.
 """
 
-import zipfile
+
 import re
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -55,12 +54,6 @@ class HDXExtractor:
         file_size_kb = len(raw) / 1024
         self._log(f"Reading '{self.path.name}' ({file_size_kb:.1f} KB)")
 
-        # Intento 1: ZIP (HelpNDoc moderno)
-        if raw[:2] == b'PK':
-            self._log("Format detected: ZIP / HelpNDoc")
-            self._vlog(f"Magic bytes: {raw[:4].hex()} (PK ZIP signature)")
-            return self._extract_from_zip(raw)
-
         # Intento 2: HTML directo
         if b'<html' in raw[:500].lower() or b'<!doctype' in raw[:200].lower():
             self._log("Format detected: direct HTML")
@@ -72,53 +65,6 @@ class HDXExtractor:
         self._vlog(f"Magic bytes: {raw[:4].hex()} — no known signature")
         return self._extract_from_text(raw.decode("utf-8", errors="replace"))
 
-    # ------------------------------------------------------------------
-    # Extracción desde ZIP
-    # ------------------------------------------------------------------
-    def _extract_from_zip(self, raw: bytes) -> HDXDocument:
-        import io
-        doc = HDXDocument(title=self.path.stem)
-
-        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
-            names = zf.namelist()
-            self._log(f"ZIP contains {len(names)} file(s) total")
-            self._vlog(f"ZIP manifest: {names}")
-
-            # Buscar HTML principal
-            html_files = sorted(
-                [n for n in names if n.endswith((".html", ".htm", ".xhtml"))],
-                key=lambda x: (0 if "index" in x.lower() or "main" in x.lower() else 1, x)
-            )
-            self._log(f"HTML files found in ZIP: {len(html_files)}")
-            self._vlog(f"HTML file list (priority-sorted): {html_files}")
-
-            # Extraer metadatos si hay un archivo de proyecto
-            meta_files = [n for n in names if n.endswith((".xml", ".hhp", ".hhc"))]
-            self._vlog(f"Metadata files found: {meta_files}")
-            for mf in meta_files:
-                try:
-                    content = zf.read(mf).decode("utf-8", errors="replace")
-                    doc.metadata[mf] = content
-                    # Intentar extraer título del proyecto
-                    title_match = re.search(r'<title[^>]*>(.*?)</title>', content, re.IGNORECASE | re.DOTALL)
-                    if title_match:
-                        doc.title = title_match.group(1).strip()
-                        self._vlog(f"Document title resolved from '{mf}': {doc.title!r}")
-                except Exception:
-                    pass
-
-            for html_file in html_files:
-                try:
-                    html_content = zf.read(html_file).decode("utf-8", errors="replace")
-                    self._vlog(f"Parsing '{html_file}' ({len(html_content)} chars) ...")
-                    sections = self._parse_html_into_sections(html_content, source=html_file)
-                    self._log(f"  '{html_file}' -> {len(sections)} section(s)")
-                    doc.sections.extend(sections)
-                except Exception as e:
-                    print(f"  [extract] WARNING: could not read '{html_file}': {e}")
-
-        self._log(f"Extraction complete: {len(doc.sections)} total section(s) from {len(html_files)} HTML file(s)")
-        return doc
 
     # ------------------------------------------------------------------
     # Extracción desde HTML único
